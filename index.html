@@ -6,143 +6,92 @@
 <title>Flappy Flap-Flap</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-:root{--ground:#fffdd0;--text:#0b1320}
-html,body{height:100%;margin:0;background:#e8f6ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-.wrap{display:grid;place-items:center;height:100dvh;padding:8px;gap:10px}
-.stage{position:relative;width:100%;max-width:520px}
-canvas{display:block;background:#cfefff;width:100%;height:auto;border-radius:16px}
-.controls{position:absolute;right:6px;bottom:6px;display:flex;flex-direction:row;gap:6px;align-items:flex-end;justify-content:flex-end;flex-wrap:nowrap;pointer-events:auto;z-index:2}
-.btn,select{appearance:none;border:2px solid #0b1320;border-radius:6px;padding:8px 10px;font-weight:700;cursor:pointer;box-shadow:none;font-size:11px;background:#fffdd0;line-height:1;font-family:'Press Start 2P', monospace;color:#0b1320;letter-spacing:0.5px;text-transform:uppercase}
-.btn.primary{background:#ff5f05;color:#ffffff;border-color:#13294b}
-.legend{opacity:.7;font-size:12px}
-@media (max-width:420px){.btn,select{font-size:10px;padding:7px 8px}}
+  :root{--ground:#fffdd0;--ink:#0b1320}
+  html,body{height:100%;margin:0;background:#cfefff;-webkit-text-size-adjust:100%}
+  .wrap{display:grid;place-items:center;height:100dvh;padding:8px}
+  .stage{position:relative;width:100%;max-width:520px}
+  canvas{display:block;background:#cfefff;width:100%;height:auto;border-radius:16px;touch-action:manipulation}
+  .controls{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:row;gap:4px;justify-content:center;align-items:center;pointer-events:auto;z-index:3}
+  .btn,select{appearance:none;border:2px solid var(--ink);border-radius:4px;padding:3px 5px;font-weight:700;cursor:pointer;font-size:8px;background:var(--ground);line-height:1;font-family:'Press Start 2P', monospace;color:var(--ink);letter-spacing:.5px;text-transform:uppercase}
+  .btn.primary{background:#ff5f05;color:#fff;border-color:#13294b}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="stage">
-    <canvas id="game" width="360" height="540" aria-label="Flappy Flap-Flap game canvas"></canvas>
-    <div class="controls" id="controlsBar">
-      <button class="btn primary" id="startBtn">Play</button>
-      <button class="btn" id="pauseBtn">Pause</button>
-      <label class="btn" style="display:flex;gap:6px;align-items:center"><span>Mode</span>
-        <select id="diffSel"><option value="easy" selected>Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
-      </label>
-      <label class="btn" style="display:flex;gap:6px;align-items:center"><span>Theme</span>
-        <select id="themeSel"><option value="day" selected>Day</option><option value="night">Night</option></select>
-      </label>
+  <div class="wrap">
+    <div class="stage">
+      <canvas id="game" width="360" height="540" aria-label="Flappy Flap-Flap game"></canvas>
+      <div class="controls" id="controlsBar">
+        <button class="btn primary" id="startBtn">Play</button>
+        <button class="btn" id="pauseBtn">Pause</button>
+        <label class="btn"><span>Mode</span>
+          <select id="diffSel"><option value="easy" selected>Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+        </label>
+        <label class="btn"><span>Theme</span>
+          <select id="themeSel"><option value="day" selected>Day</option><option value="night">Night</option></select>
+        </label>
+      </div>
     </div>
   </div>
-  <div class="legend">Tap anywhere to flap. P = pause. R = restart.</div>
-</div>
 <script>
-;(() => {
+(()=>{
+  if(document.documentElement.dataset.ffp==='1')return;document.documentElement.dataset.ffp='1';
   const COLORS={orange:'#ff5f05',blue:'#13294b',white:'#ffffff',beige:'#fffdd0'};
   const THEMES={day:{sky:['#8bd2ff','#bfe9ff','#ffffff'],ground:COLORS.beige,stripe:'#e6e1b0',credit:'#000000',birdColor:COLORS.blue,wingColor:COLORS.orange,beakColor:COLORS.orange},night:{sky:['#274060','#1b2a49','#0d1321'],ground:COLORS.beige,stripe:'#d9d3a6',credit:'#000000',birdColor:COLORS.beige,wingColor:COLORS.orange,beakColor:COLORS.orange}};
   const canvas=document.getElementById('game');
   const ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
   let DPR=1,LW=360,LH=540;
   const HUD={reserve:0};
-  const G={gravity:0.34,thrust:-6,pipeGap:150,pipeW:60,pipeSpacing:230,speed:1.25,groundH:70,started:false,paused:false,over:false,score:0,best:Number(localStorage.getItem('flappy_best')||0),diffName:(localStorage.getItem('flappy_diff')||'easy'),theme:(localStorage.getItem('flappy_theme')||'day')};
+  const G={gravity:0.34,thrust:-6,pipeGap:150,pipeW:60,pipeSpacing:230,speed:1.25,groundH:90,started:false,paused:false,over:false,score:0,best:Number(localStorage.getItem('flappy_best')||0),diffName:(localStorage.getItem('flappy_diff')||'easy'),theme:(localStorage.getItem('flappy_theme')||'day')};
   const DIFF={easy:{pipeGap:150,pipeSpacing:230,speed:1.25},medium:{pipeGap:120,pipeSpacing:200,speed:1.5},hard:{pipeGap:95,pipeSpacing:185,speed:1.8}};
-  let pipes=[]; const bird={x:90,y:240,vy:0,r:14,angle:0}; let stars=[]; let last=0,accumulator=0; const step=1000/60;
-  let creditLayout={tw:0,iw:14,ih:14,gap:6,startX:0,y:0};
-  const logo=new Image(); logo.onload=()=>{computeCreditLayout(); draw();}; logo.onerror=()=>{computeCreditLayout();}; logo.src='tavo - official icon.png';
-  let bgCanvas=document.createElement('canvas'), bgCtx=bgCanvas.getContext('2d',{alpha:false});
-  let groundCanvas=document.createElement('canvas'), groundCtx=groundCanvas.getContext('2d',{alpha:false});
+  let pipes=[];const bird={x:90,y:240,vy:0,r:14,angle:0};let stars=[];let last=0,accumulator=0;const step=1000/60;let creditLayout={tw:0,iw:0,ih:0,gap:6,startX:0,y:0};
+  let bgCanvas=document.createElement('canvas'),bgCtx=bgCanvas.getContext('2d',{alpha:false});
+  let groundCanvas=document.createElement('canvas'),groundCtx=groundCanvas.getContext('2d',{alpha:false});
   let bgTheme=null,bgW=0,bgH=0,groundTheme=null,groundW=0,groundH=0;
   function clampDPR(){return Math.min(Math.max(window.devicePixelRatio||1,1),1.25)}
-  function fitHiDPI(){DPR=clampDPR(); canvas.width=360*DPR; canvas.height=540*DPR; const maxW=Math.min(window.innerWidth-16,520); const cssW=Math.max(260,maxW); const cssH=Math.round(cssW*(540/360)); canvas.style.width=cssW+'px'; canvas.style.height=cssH+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); ctx.imageSmoothingEnabled=true; LW=canvas.width/DPR; LH=canvas.height/DPR; buildStatic(); computeCreditLayout(); positionControls();}
-  addEventListener('resize',()=>{fitHiDPI(); positionControls();},{passive:true}); fitHiDPI();
-  const AudioCtx=window.AudioContext||window.webkitAudioContext; let audioCtx=null; function beep(t='sine',f=600,d=0.05,g=0.04){if(!audioCtx)return;const o=audioCtx.createOscillator();const q=audioCtx.createGain();o.type=t;o.frequency.value=f;q.gain.value=g;o.connect(q);q.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}    
-  function applyDifficulty(n){const d=DIFF[n]||DIFF.easy;G.pipeGap=d.pipeGap;G.pipeSpacing=d.pipeSpacing;G.speed=d.speed;G.diffName=n;localStorage.setItem('flappy_diff',n);const s=document.getElementById('diffSel');if(s)s.value=n;updateHUD();positionControls();}
-  function applyTheme(n){G.theme=THEMES[n]?n:'day'; localStorage.setItem('flappy_theme',G.theme); const sel=document.getElementById('themeSel'); if(sel) sel.value=G.theme; buildStatic(); computeCreditLayout(); positionControls(); draw();}
+  function fitHiDPI(){DPR=clampDPR();canvas.width=360*DPR;canvas.height=540*DPR;const maxW=Math.min(window.innerWidth-16,520);const cssW=Math.max(260,maxW);const cssH=Math.round(cssW*(540/360));canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';ctx.setTransform(DPR,0,0,DPR,0,0);ctx.imageSmoothingEnabled=true;LW=canvas.width/DPR;LH=canvas.height/DPR;buildStatic();computeCreditLayout();positionControls();draw();}
+  addEventListener('resize',()=>{fitHiDPI();},{passive:true});
+  fitHiDPI();
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx=null;function beep(t='sine',f=600,d=0.05,g=0.04){if(!audioCtx)return;const o=audioCtx.createOscillator();const q=audioCtx.createGain();o.type=t;o.frequency.value=f;q.gain.value=g;o.connect(q);q.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}
+  function applyDifficulty(n){const d=DIFF[n]||DIFF.easy;G.pipeGap=d.pipeGap;G.pipeSpacing=d.pipeSpacing;G.speed=d.speed;G.diffName=n;localStorage.setItem('flappy_diff',n);const s=document.getElementById('diffSel');if(s)s.value=n;}
+  function applyTheme(n){G.theme=THEMES[n]?n:'day';localStorage.setItem('flappy_theme',G.theme);const sel=document.getElementById('themeSel');if(sel)sel.value=G.theme;buildStatic();draw();}
   document.getElementById('diffSel').addEventListener('change',e=>{applyDifficulty(e.target.value);reset();},{passive:true});
   document.getElementById('themeSel').addEventListener('change',e=>{applyTheme(e.target.value);},{passive:true});
-  function reset(){applyDifficulty(G.diffName||'easy');buildStatic();G.started=false;G.paused=false;G.over=false;G.score=0;bird.x=90;bird.y=240;bird.vy=0;bird.angle=0;pipes=[];spawnInitialPipes();draw();updateHUD();positionControls();}
-  function spawnInitialPipes(){let x=420;for(let i=0;i<4;i++){pipes.push(makePipe(x));x+=G.pipeSpacing;}}
+  function reset(){applyDifficulty(G.diffName||'easy');buildStatic();G.started=false;G.paused=false;G.over=false;G.score=0;bird.x=90;bird.y=240;bird.vy=0;bird.angle=0;pipes=[];spawnInitialPipes();draw();positionControls();}
+  function spawnInitialPipes(){let x=LW+60;for(let i=0;i<4;i++){pipes.push(makePipe(x));x+=G.pipeSpacing;}}
   function makePipe(x){const minTop=40;const maxTop=LH-(G.groundH+HUD.reserve)-G.pipeGap-40;const topH=(minTop+Math.random()*(maxTop-minTop))|0;return{x,topH,passed:false};}
-  function buildStars(){stars.length=0; if(G.theme!=='night') return; const n=Math.round((LW*LH)/18000); for(let i=0;i<n;i++){stars.push({x:Math.random()*LW,y:Math.random()*LH*0.7,r:Math.random()*1.2+0.5,c:Math.random()<0.5?COLORS.orange:COLORS.white});}}
-  function buildBG(){if(bgTheme===G.theme&&bgW===LW&&bgH===LH)return; bgW=LW; bgH=LH; bgCanvas.width=LW; bgCanvas.height=LH; const theme=THEMES[G.theme]||THEMES.day; const g=bgCtx.createLinearGradient(0,0,0,LH); g.addColorStop(0,theme.sky[0]); g.addColorStop(.7,theme.sky[1]); g.addColorStop(1,theme.sky[2]); bgCtx.fillStyle=g; bgCtx.fillRect(0,0,LW,LH); if(G.theme==='day'){ drawCloudBG(50,80,0.9); drawCloudBG(200,50,0.6); drawCloudBG(300,130,0.8); } else { drawStarsBG(); } bgTheme=G.theme; }
-  function buildGround(){if(groundTheme===G.theme&&groundW===LW&&groundH===LH)return; groundW=LW; groundH=LH; groundCanvas.width=LW; groundCanvas.height=LH; const theme=THEMES[G.theme]||THEMES.day; const effective=G.groundH+HUD.reserve; groundCtx.clearRect(0,0,LW,LH); groundCtx.fillStyle=theme.ground; groundCtx.fillRect(0,LH-effective,LW,effective); groundCtx.fillStyle=theme.stripe; for(let i=0;i<LW;i+=22){groundCtx.fillRect(i|0,(LH-effective+8)|0,14,5);} groundCtx.fillStyle='#ffffff'; groundCtx.fillRect(0,LH-3,LW,3); groundTheme=G.theme; positionControls(); }
-  function buildStatic(){buildStars(); buildBG(); buildGround();}
-  function drawStarsBG(){if(G.theme!=='night')return; bgCtx.globalAlpha=0.85; for(let i=0;i<stars.length;i++){const s=stars[i]; bgCtx.beginPath(); bgCtx.arc(s.x,s.y,s.r,0,6.283); bgCtx.fillStyle=s.c; bgCtx.fill();} bgCtx.globalAlpha=1;}
+  function buildStars(){stars.length=0;if(G.theme!=='night')return;const n=Math.round((LW*LH)/18000);for(let i=0;i<n;i++){stars.push({x:Math.random()*LW,y:Math.random()*LH*0.7,r:Math.random()*1.2+0.5,c:Math.random()<0.5?COLORS.orange:COLORS.white});}}
+  function buildBG(){if(bgTheme===G.theme&&bgW===LW&&bgH===LH)return;bgW=LW;bgH=LH;bgCanvas.width=LW;bgCanvas.height=LH;const theme=THEMES[G.theme]||THEMES.day;const g=bgCtx.createLinearGradient(0,0,0,LH);g.addColorStop(0,theme.sky[0]);g.addColorStop(.7,theme.sky[1]);g.addColorStop(1,theme.sky[2]);bgCtx.fillStyle=g;bgCtx.fillRect(0,0,LW,LH);if(G.theme==='day'){drawCloudBG(50,80,0.9);drawCloudBG(200,50,0.6);drawCloudBG(300,130,0.8);}else{drawStarsBG();}bgTheme=G.theme;}
+  function buildGround(){if(groundTheme===G.theme&&groundW===LW&&groundH===LH)return;groundW=LW;groundH=LH;groundCanvas.width=LW;groundCanvas.height=LH;const theme=THEMES[G.theme]||THEMES.day;const effective=G.groundH+HUD.reserve;groundCtx.clearRect(0,0,LW,LH);groundCtx.fillStyle=theme.ground;groundCtx.fillRect(0,LH-effective,LW,effective);groundCtx.fillStyle=theme.stripe;for(let i=0;i<LW;i+=22){groundCtx.fillRect(i|0,(LH-effective+8)|0,14,5);}groundCtx.fillStyle='#ffffff';groundCtx.fillRect(0,LH-3,LW,3);groundTheme=G.theme;positionControls();}
+  function buildStatic(){buildStars();buildBG();buildGround();}
+  function drawStarsBG(){if(G.theme!=='night')return;bgCtx.globalAlpha=0.85;for(let i=0;i<stars.length;i++){const s=stars[i];bgCtx.beginPath();bgCtx.arc(s.x,s.y,s.r,0,6.283);bgCtx.fillStyle=s.c;bgCtx.fill();}bgCtx.globalAlpha=1;}
   function roundRectBG(x,y,w,h,r,fill){bgCtx.beginPath();const rr=Math.min(r,w/2,h/2);bgCtx.moveTo(x+rr,y);bgCtx.arcTo(x+w,y,x+w,y+h,rr);bgCtx.arcTo(x+w,y+h,x,y+h,rr);bgCtx.arcTo(x,y+h,x,y,rr);bgCtx.arcTo(x,y,x+w,y,rr);if(fill)bgCtx.fill();else bgCtx.stroke();}
-  function drawCloudBG(x,y,scale){bgCtx.save();bgCtx.translate(x,y);bgCtx.scale(scale,scale);bgCtx.fillStyle=COLORS.orange; roundRectBG(-25,-10,50,20,10,true); bgCtx.fillStyle=COLORS.blue; roundRectBG(-10,-18,35,24,12,true); bgCtx.fillStyle=COLORS.white; roundRectBG(5,-12,42,22,11,true); bgCtx.restore();}
-  function startGame(){if(!audioCtx)audioCtx=new AudioCtx();if(G.over)reset();G.started=true;G.paused=false;last=performance.now();accumulator=0;requestAnimationFrame(loop);}    
-  function flap(){if(!G.started){startGame();return;}if(G.over){reset();startGame();return;}if(G.paused)return;bird.vy=G.thrust;beep('sine',740,0.04,0.05);}    
+  function drawCloudBG(x,y,scale){bgCtx.save();bgCtx.translate(x,y);bgCtx.scale(scale,scale);bgCtx.fillStyle=COLORS.orange;roundRectBG(-25,-10,50,20,10,true);bgCtx.fillStyle=COLORS.blue;roundRectBG(-10,-18,35,24,12,true);bgCtx.fillStyle=COLORS.white;roundRectBG(5,-12,42,22,11,true);bgCtx.restore();}
+  function startGame(){if(!audioCtx)audioCtx=new AudioCtx();if(G.over)reset();G.started=true;G.paused=false;last=performance.now();accumulator=0;requestAnimationFrame(loop);}
+  function flap(){if(!G.started){startGame();return;}if(G.over){reset();startGame();return;}if(G.paused)return;bird.vy=G.thrust;beep('sine',740,0.04,0.05);}
   function pauseToggle(){G.paused=!G.paused;if(!G.paused&&G.started&&!G.over){last=performance.now();requestAnimationFrame(loop);}updateHUD();}
   document.getElementById('startBtn').addEventListener('click',()=>{if(G.over)reset();startGame();});
   document.getElementById('pauseBtn').addEventListener('click',pauseToggle);
   addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();}else if(e.key.toLowerCase()==='p')pauseToggle();else if(e.key.toLowerCase()==='r'){reset();startGame();}});
   canvas.addEventListener('pointerdown',flap,{passive:true});
   function updateHUD(){const p=document.getElementById('pauseBtn');if(p)p.textContent=G.paused?'Resume':'Pause';}
-  function loop(t){ if(!G.started||G.paused||G.over) return; const frame=t-last; last=t; accumulator+=Math.min(48,frame); while(accumulator>=step){ tick(step/16.67); accumulator-=step; } draw(); requestAnimationFrame(loop); }
-  function tick(dt){
-    bird.vy+=G.gravity*dt; bird.y+=bird.vy*dt*2; bird.angle=Math.max(-0.4,Math.min(1.2,bird.vy/8));
-    for(let i=0;i<pipes.length;i++){pipes[i].x-=G.speed*dt*2;}
-    if(!pipes.length){ pipes.push(makePipe(LW+G.pipeSpacing)); }
-    else if(pipes[0].x+G.pipeW<-10){ const lastX=pipes.length>1?pipes[pipes.length-1].x:LW; pipes.shift(); pipes.push(makePipe((lastX+G.pipeSpacing)|0)); }
-    for(let i=0;i<pipes.length;i++){const p=pipes[i]; if(!p.passed&&p.x+G.pipeW<bird.x){p.passed=1;G.score++; if(audioCtx)beep('triangle',520,0.05,0.05); if(G.score>G.best){G.best=G.score;localStorage.setItem('flappy_best',G.best);} }}
-    const groundY=LH-(G.groundH+HUD.reserve);
-    if(bird.y+bird.r>=groundY){ gameOver(); return; }
-    if(bird.y-bird.r<=0){ gameOver(); return; }
-    for(let i=0;i<pipes.length;i++){const p=pipes[i]; const x=p.x,w=G.pipeW,gapTop=p.topH,gapBottom=p.topH+G.pipeGap; if(circleRect(bird.x,bird.y,bird.r,x,0,w,gapTop)||circleRect(bird.x,bird.y,bird.r,x,gapBottom,w,groundY-gapBottom)){ gameOver(); return; }}
-  }
-  function circleRect(cx,cy,r,rx,ry,rw,rh){const tx=Math.max(rx,Math.min(cx,rx+rw));const ty=Math.max(ry,Math.min(cy,ry+rh));const dx=cx-tx,dy=cy-ty;return(dx*dx+dy*dy)<=r*r;}
+  function loop(t){if(!G.started||G.paused||G.over)return;const frame=t-last;last=t;accumulator+=Math.min(48,frame);while(accumulator>=step){tick(step/16.67);accumulator-=step;}draw();requestAnimationFrame(loop);}
+  function tick(dt){bird.vy+=G.gravity*dt;bird.y+=bird.vy*dt*2;bird.angle=Math.max(-0.4,Math.min(1.2,bird.vy/8));for(let i=0;i<pipes.length;i++){pipes[i].x-=G.speed*dt*2;}if(!pipes.length){pipes.push(makePipe(LW+G.pipeSpacing));}else if(pipes[0].x+G.pipeW<-10){const lastX=pipes.length>1?pipes[pipes.length-1].x:LW;pipes.shift();pipes.push(makePipe((lastX+G.pipeSpacing)|0));}for(let i=0;i<pipes.length;i++){const p=pipes[i];if(!p.passed&&p.x+G.pipeW<bird.x){p.passed=1;G.score++;if(audioCtx)beep('triangle',520,0.05,0.05);if(G.score>G.best){G.best=G.score;localStorage.setItem('flappy_best',G.best);}}}const groundY=LH-(G.groundH+HUD.reserve);if(bird.y+bird.r>=groundY){gameOver();return;}if(bird.y-bird.r<=0){gameOver();return;}for(let i=0;i<pipes.length;i++){const p=pipes[i];const x=p.x,w=G.pipeW,gapTop=p.topH,gapBottom=p.topH+G.pipeGap;if(circleRect(bird.x,bird.y,bird.r,x,0,w,gapTop)||circleRect(bird.x,bird.y,bird.r,x,gapBottom,w,groundY-gapBottom)){gameOver();return;}}}
+  function circleRect(cx,cy,r,rx,ry,rw,rh){const tx=Math.max(rx,Math.min(cx,rx+rw));const ty=Math.max(ry,Math.min(cy,ry+rh));const dx=cx-tx,dy=cy-ty;return dx*dx+dy*dy<=r*r;}
   function gameOver(){G.over=true;if(audioCtx)beep('sawtooth',220,0.15,0.05);draw();}
-  function computeCreditLayout(){ctx.save(); const theme=THEMES[G.theme]||THEMES.day; ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillStyle=theme.credit; ctx.font='10px "Press Start 2P", monospace'; const credit='created by @originaltavo'; const tw=ctx.measureText(credit).width; const iw=14, ih=14, gap=6; const showLogo=logo&&logo.complete&&logo.naturalWidth>0; const total=tw+(showLogo?(gap+iw):0); const startX=(LW-total)/2; const y=LH-4; ctx.restore(); creditLayout={tw,iw,ih,gap,startX,y}; }
-  function draw(){
-    ctx.clearRect(0,0,LW,LH);
-    ctx.drawImage(bgCanvas,0,0,LW,LH);
-    for(let i=0;i<pipes.length;i++) drawPipe(pipes[i]);
-    ctx.drawImage(groundCanvas,0,0,LW,LH);
-    ctx.save(); ctx.translate(bird.x,bird.y); ctx.rotate(bird.angle); drawBird(); ctx.restore();
-    const scale=Math.max(14,Math.round(18*(LW/360)));
-    ctx.fillStyle='rgba(0,0,0,0.08)'; ctx.fillRect(0,0,LW,Math.ceil(scale*2.2));
-    ctx.fillStyle='#fff'; ctx.font=`bold ${scale}px system-ui, -apple-system, Segoe UI, Roboto`; ctx.textBaseline='middle';
-    ctx.textAlign='left'; ctx.fillText(`Score: ${G.score}`,10,Math.ceil(scale*1.1));
-    ctx.textAlign='right'; ctx.fillText(`Best: ${G.best}`,LW-10,Math.ceil(scale*1.1));
-    const credit='created by @originaltavo';
-    ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillStyle=(THEMES[G.theme]||THEMES.day).credit; ctx.font='10px "Press Start 2P", monospace';
-    ctx.fillText(credit,creditLayout.startX|0,creditLayout.y|0);
-    if(logo&&logo.complete&&logo.naturalWidth>0){ctx.drawImage(logo,(creditLayout.startX+creditLayout.tw+creditLayout.gap)|0,(creditLayout.y-creditLayout.ih)|0,creditLayout.iw,creditLayout.ih);}    
-    if(!G.started)drawIntro();
-    if(G.paused)drawCenterText('Paused');
-    if(G.over)drawCenterText('Game Over — Tap to Restart');
-    positionControls();
-  }
-  function drawIntro(){
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(20,(LH*0.28-50)|0,(LW-40)|0,120);
-    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='bold 22px system-ui, -apple-system, Segoe UI, Roboto'; ctx.fillText('Flappy Flap-Flap',(LW/2)|0,(LH*0.28)|0);
-    ctx.font='bold 18px system-ui, -apple-system, Segoe UI, Roboto'; ctx.fillText('Tap to Start',(LW/2)|0,(LH*0.28+36)|0);
-  }
-  function drawCenterText(s){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(20,(LH/2-40)|0,(LW-40)|0,80); ctx.fillStyle='#fff'; ctx.font='bold 20px system-ui, -apple-system, Segoe UI, Roboto'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(s,(LW/2)|0,(LH/2)|0); }
-  function drawPipe(p){ const x=p.x|0,w=G.pipeW,gapTop=p.topH,gapBottom=p.topH+G.pipeGap; ctx.fillStyle=COLORS.orange; ctx.fillRect(x,0,w,gapTop); ctx.fillRect(x,gapBottom,w,(LH-(G.groundH+HUD.reserve)-gapBottom)|0); ctx.fillStyle='#e65400'; ctx.fillRect(x-4,gapTop-18,w+8,18); ctx.fillRect(x-4,gapBottom,w+8,18);}
-  function drawBird(){const theme=THEMES[G.theme]||THEMES.day; ctx.fillStyle=theme.birdColor; circle(0,0,bird.r); ctx.fillStyle=theme.wingColor; ellipse(-2,2,10,7,-0.2); ctx.fillStyle='#fff'; circle(6,-4,5); ctx.fillStyle='#111'; circle(8,-4,2); ctx.fillStyle=theme.beakColor; ctx.beginPath(); ctx.moveTo(bird.r-2,0); ctx.lineTo(bird.r+8,4); ctx.lineTo(bird.r-2,6); ctx.closePath(); ctx.fill();}
+  function computeCreditLayout(){ctx.save();const theme=THEMES[G.theme]||THEMES.day;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillStyle=theme.credit;ctx.font='10px "Press Start 2P", monospace';const credit='created by @originaltavo';const tw=ctx.measureText(credit).width;const iw=0,ih=0,gap=6;const startX=LW/2;const y=LH-6;ctx.restore();creditLayout={tw,iw,ih,gap,startX,y};}
+  function draw(){ctx.clearRect(0,0,LW,LH);ctx.drawImage(bgCanvas,0,0,LW,LH);for(let i=0;i<pipes.length;i++)drawPipe(pipes[i]);ctx.drawImage(groundCanvas,0,0,LW,LH);ctx.save();ctx.translate(bird.x,bird.y);ctx.rotate(bird.angle);drawBird();ctx.restore();const scale=Math.max(14,Math.round(18*(LW/360)));ctx.fillStyle='rgba(0,0,0,0.08)';ctx.fillRect(0,0,LW,Math.ceil(scale*2.2));ctx.fillStyle='#fff';ctx.font=`bold ${scale}px system-ui, -apple-system, Segoe UI, Roboto`;ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillText(`Score: ${G.score}`,10,Math.ceil(scale*1.1));ctx.textAlign='right';ctx.fillText(`Best: ${G.best}`,LW-10,Math.ceil(scale*1.1));const credit='created by @originaltavo';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillStyle=(THEMES[G.theme]||THEMES.day).credit;ctx.font='10px "Press Start 2P", monospace';ctx.fillText(credit,creditLayout.startX|0,creditLayout.y|0);if(!G.started)drawIntro();if(G.paused)drawCenterText('Paused');if(G.over)drawCenterText('Game Over — Tap to Restart');positionControls();}
+  function drawIntro(){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(20,(LH*0.28-50)|0,(LW-40)|0,120);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 22px system-ui, -apple-system, Segoe UI, Roboto';ctx.fillText('Flappy Flap-Flap',(LW/2)|0,(LH*0.28)|0);ctx.font='bold 18px system-ui, -apple-system, Segoe UI, Roboto';ctx.fillText('Tap to Start',(LW/2)|0,(LH*0.28+36)|0);}
+  function drawCenterText(s){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(20,(LH/2-40)|0,(LW-40)|0,80);ctx.fillStyle='#fff';ctx.font='bold 20px system-ui, -apple-system, Segoe UI, Roboto';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(s,(LW/2)|0,(LH/2)|0);}
+  function drawPipe(p){const x=p.x|0,w=G.pipeW,gapTop=p.topH,gapBottom=p.topH+G.pipeGap;ctx.fillStyle=COLORS.orange;ctx.fillRect(x,0,w,gapTop);ctx.fillRect(x,gapBottom,w,(LH-(G.groundH+HUD.reserve)-gapBottom)|0);ctx.fillStyle='#e65400';ctx.fillRect(x-4,gapTop-18,w+8,18);ctx.fillRect(x-4,gapBottom,w+8,18);}
+  function drawBird(){const theme=THEMES[G.theme]||THEMES.day;ctx.fillStyle=theme.birdColor;circle(0,0,bird.r);ctx.fillStyle=theme.wingColor;ellipse(-2,2,10,7,-0.2);ctx.fillStyle='#fff';circle(6,-4,5);ctx.fillStyle='#111';circle(8,-4,2);ctx.fillStyle=theme.beakColor;ctx.beginPath();ctx.moveTo(bird.r-2,0);ctx.lineTo(bird.r+8,4);ctx.lineTo(bird.r-2,6);ctx.closePath();ctx.fill();}
   function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();}
   function ellipse(x,y,rx,ry,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot||0);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,6.283);ctx.fill();ctx.restore();}
-  function positionControls(){const el=document.getElementById('controlsBar'); if(!el) return; const rect=canvas.getBoundingClientRect(); const bottomPx=Math.max(6,((creditLayout.ih+creditLayout.gap+6)/LH)*rect.height); el.style.bottom=bottomPx.toFixed(2)+'px'; updateSafeHUD(rect);}  
-  function updateSafeHUD(rect){const el=document.getElementById('controlsBar'); if(!el) return; const r=rect||canvas.getBoundingClientRect(); const h=el.offsetHeight; const gap=6; const needPx=h+gap; const groundPx=(G.groundH/LH)*r.height; if(needPx<=groundPx){HUD.reserve=0;}else{const units=(needPx/r.height)*LH; HUD.reserve=Math.min(Math.max(units-G.groundH,0),LH*0.28);} buildGround();}
-  function runTests(){
-    let fails=0; const log=(ok)=>{if(!ok)fails++;}; const expect=(a,b)=>{log(JSON.stringify(a)===JSON.stringify(b));};
-    applyDifficulty('easy'); expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:150,space:230,s:1.25});
-    applyDifficulty('medium'); expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:120,space:200,s:1.5});
-    applyDifficulty('hard'); expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:95,space:185,s:1.8});
-    const a=circleRect(5,5,3,0,0,10,10)===true; const b=circleRect(50,50,3,0,0,10,10)===false; const c=circleRect(10,5,5,0,0,10,10)===true; log(a&&b&&c);
-    const maxTop=LH-(G.groundH+HUD.reserve)-G.pipeGap-40; const ptest=makePipe(300); log(ptest.topH>=40&&ptest.topH<=Math.floor(maxTop));
-    reset(); const keepGap=G.pipeGap; G.pipeGap=300; const before=G.score; pipes=[{x:bird.x-G.pipeW-2,topH:0,passed:false}]; tick(0); log(G.score===before+1); G.pipeGap=keepGap;
-    pipes.length=0; tick(1); log(pipes.length>0);
-    applyTheme('night'); log(G.theme==='night'); log(stars.length>0 && stars.every(s=>s.c===COLORS.orange||s.c===COLORS.white));
-    const tn=THEMES.night; log(tn.wingColor===COLORS.orange && tn.birdColor===COLORS.beige && tn.beakColor===COLORS.orange && tn.credit==='#000000');
-    applyTheme('day'); const td=THEMES.day; log(td.wingColor===COLORS.orange && td.birdColor===COLORS.blue && td.beakColor===COLORS.orange);
-    let threw=false; try{ drawCenterText('x'); }catch(e){ threw=true; } log(!threw && typeof drawCenterText==='function');
-    let threw2=false; try{ draw(); }catch(e){ threw2=true; } log(!threw2);
-    let threw3=false; try{ computeCreditLayout(); draw(); }catch(e){ threw3=true; } log(!threw3);
-    let threw4=false; try{ fitHiDPI(); }catch(e){ threw4=true; } log(!threw4);
-  }
-  reset(); runTests();
+  function positionControls(){const el=document.getElementById('controlsBar');if(!el)return;const rect=canvas.getBoundingClientRect();const creditPad=14;const bottomPx=Math.max(creditPad,(G.groundH/LH)*rect.height*0.5);el.style.bottom=bottomPx.toFixed(2)+'px';el.style.left='50%';el.style.transform='translateX(-50%)';updateSafeHUD(rect);} 
+  function updateSafeHUD(rect){const el=document.getElementById('controlsBar');if(!el)return;const r=rect||canvas.getBoundingClientRect();const h=el.offsetHeight;const gap=6;const needPx=h+gap;const groundPx=(G.groundH/LH)*r.height;if(needPx<=groundPx){HUD.reserve=0;}else{const units=(needPx/r.height)*LH;HUD.reserve=Math.min(Math.max(units-G.groundH,0),LH*0.28);}buildGround();}
+  function runTests(){let fails=0;const log=o=>{if(!o)fails++;};const expect=(a,b)=>{log(JSON.stringify(a)===JSON.stringify(b));};applyDifficulty('easy');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:150,space:230,s:1.25});applyDifficulty('medium');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:120,space:200,s:1.5});applyDifficulty('hard');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:95,space:185,s:1.8});const a=circleRect(5,5,3,0,0,10,10)===true;const b=circleRect(50,50,3,0,0,10,10)===false;const c=circleRect(10,5,5,0,0,10,10)===true;log(a&&b&&c);const maxTop=LH-(G.groundH+HUD.reserve)-G.pipeGap-40;const ptest=makePipe(300);log(ptest.topH>=40&&ptest.topH<=Math.floor(maxTop));reset();const keepGap=G.pipeGap;G.pipeGap=300;const before=G.score;pipes=[{x:bird.x-G.pipeW-2,topH:0,passed:false}];tick(0);log(G.score===before+1);G.pipeGap=keepGap;pipes.length=0;tick(1);log(pipes.length>0);applyTheme('night');log(G.theme==='night');log(stars.length>0&&stars.every(s=>s.c===COLORS.orange||s.c===COLORS.white));const tn=THEMES.night;log(tn.wingColor===COLORS.orange&&tn.birdColor===COLORS.beige&&tn.beakColor===COLORS.orange&&tn.credit==='#000000');applyTheme('day');const td=THEMES.day;log(td.wingColor===COLORS.orange&&td.birdColor===COLORS.blue&&td.beakColor===COLORS.orange);let threw=false;try{drawCenterText('x');}catch(e){threw=true;}log(!threw&&typeof drawCenterText==='function');let threw2=false;try{draw();}catch(e){threw2=true;}log(!threw2);let threw3=false;try{computeCreditLayout();draw();}catch(e){threw3=true;}log(!threw3);let threw4=false;try{fitHiDPI();}catch(e){threw4=true;}log(!threw4);console.log(fails?`Tests: ${fails} fail`:'Tests: pass');}
+  reset();runTests();
+  ['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+  let lastTouchEnd=0;document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<350){e.preventDefault();}lastTouchEnd=now},{passive:false});
 })();
 </script>
 </body>
