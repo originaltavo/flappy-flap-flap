@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no" />
 <title>Flappy Flap-Flap</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -14,6 +14,9 @@
   .controls{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:row;gap:4px;justify-content:center;align-items:center;pointer-events:auto;z-index:3}
   .btn,select{appearance:none;border:2px solid var(--ink);border-radius:4px;padding:3px 5px;font-weight:700;cursor:pointer;font-size:8px;background:var(--ground);line-height:1;font-family:'Press Start 2P', monospace;color:var(--ink);letter-spacing:.5px;text-transform:uppercase}
   .btn.primary{background:#ff5f05;color:#fff;border-color:#13294b}
+</style>
+<style>
+  body, .controls, .btn, select, canvas { touch-action: manipulation; -webkit-user-select: none; -ms-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body>
@@ -91,8 +94,11 @@
   function runTests(){let fails=0;const log=o=>{if(!o)fails++;};const expect=(a,b)=>{log(JSON.stringify(a)===JSON.stringify(b));};applyDifficulty('easy');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:150,space:230,s:1.25});applyDifficulty('medium');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:120,space:200,s:1.5});applyDifficulty('hard');expect({gap:G.pipeGap,space:G.pipeSpacing,s:G.speed},{gap:95,space:185,s:1.8});const a=circleRect(5,5,3,0,0,10,10)===true;const b=circleRect(50,50,3,0,0,10,10)===false;const c=circleRect(10,5,5,0,0,10,10)===true;log(a&&b&&c);const maxTop=LH-(G.groundH+HUD.reserve)-G.pipeGap-40;const ptest=makePipe(300);log(ptest.topH>=40&&ptest.topH<=Math.floor(maxTop));reset();const keepGap=G.pipeGap;G.pipeGap=300;const before=G.score;pipes=[{x:bird.x-G.pipeW-2,topH:0,passed:false}];tick(0);log(G.score===before+1);G.pipeGap=keepGap;pipes.length=0;tick(1);log(pipes.length>0);applyTheme('night');log(G.theme==='night');log(stars.length>0&&stars.every(s=>s.c===COLORS.orange||s.c===COLORS.white));const tn=THEMES.night;log(tn.wingColor===COLORS.orange&&tn.birdColor===COLORS.beige&&tn.beakColor===COLORS.orange&&tn.credit==='#000000');applyTheme('day');const td=THEMES.day;log(td.wingColor===COLORS.orange&&td.birdColor===COLORS.blue&&td.beakColor===COLORS.orange);let threw=false;try{drawCenterText('x');}catch(e){threw=true;}log(!threw&&typeof drawCenterText==='function');let threw2=false;try{draw();}catch(e){threw2=true;}log(!threw2);let threw3=false;try{computeCreditLayout();draw();}catch(e){threw3=true;}log(!threw3);let threw4=false;try{fitHiDPI();}catch(e){threw4=true;}log(!threw4);console.log(fails?`Tests: ${fails} fail`:'Tests: pass');}
   reset();runTests();
   ['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+  document.addEventListener('dblclick',e=>{e.preventDefault();},{passive:false,capture:true});
+  document.addEventListener('click',e=>{if(e.detail>1){e.preventDefault();}},{passive:false,capture:true});
   let lastTouchEnd=0;document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<350){e.preventDefault();}lastTouchEnd=now},{passive:false});
 })();
 </script>
 </body>
 </html>
+
